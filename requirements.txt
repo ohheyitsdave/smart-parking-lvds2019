@@ -4,3 +4,4 @@ numpy
 jupyter
 pillow
 matplotlib
+opencv-python
