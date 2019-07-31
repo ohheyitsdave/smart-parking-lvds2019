@@ -43,7 +43,7 @@ for img_number, path_to_image in enumerate(islice(get_images(), 4, 5)):
     blob = cv2.dnn.blobFromImage(image, swapRB=False, crop=False)
     net.setInput(blob)
     (boxes, masks) = net.forward(["detection_out_final", "detection_masks"])
-    #pickle.dump({'boxes': boxes, 'masks': masks}, open('/Users/michael/Downloads/masks.data', 'wb'))
+    pickle.dump({'boxes': boxes, 'masks': masks}, open('/Users/michael/Downloads/masks.data', 'wb'))
     # clone our original image so we can draw on it
     clone = image.copy()
     print(path_to_image)
