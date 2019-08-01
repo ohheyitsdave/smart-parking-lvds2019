@@ -23,7 +23,7 @@ config = InferenceConfig()
 config.display()
 
 
-def _merge_masks(masks):
+def merge_masks(masks):
     """
     :param masks: list of true/false masks shape (image height, image width, image num)
     :type masks: np.array
@@ -33,7 +33,7 @@ def _merge_masks(masks):
     return reduce(lambda x, y: x | y, [masks[:, :, i] for i in range(masks.shape[2])])
 
 
-def _filter_out_classes(predictions, accepted_classes=ACCEPTED_CLASSES_INDEXES):
+def filter_out_classes(predictions, accepted_classes=ACCEPTED_CLASSES_INDEXES):
     filtered = []
     for result in predictions:
         new_result = {}
@@ -63,13 +63,13 @@ if __name__ == '__main__':
     image_path = '/Users/michael/work/lvivds/parkingslot/images/2018-07-16 07:45:39.024.jpg'
     image = skimage.io.imread(image_path)
 
-    res = _filter_out_classes(predict_image_masks([image]))[0]
+    res = filter_out_classes(predict_image_masks([image]))[0]
 
     display_instances(image, res['rois'], res['masks'], res['class_ids'], CLASS_NAMES)
 
     from PIL import Image
 
-    single_mask = _merge_masks(res['masks'])
+    single_mask = merge_masks(res['masks'])
 
     from pickle import dump
     dump(single_mask, open('temp/single_mask.pkl', 'wb'))
