@@ -12,3 +12,4 @@ Cython
 pycocotools
 tqdm
 imgaug
+colour
