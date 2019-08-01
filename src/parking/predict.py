@@ -67,33 +67,13 @@ if __name__ == '__main__':
 
     display_instances(image, res['rois'], res['masks'], res['class_ids'], CLASS_NAMES)
 
-    from PIL import Image, ImageDraw
+    from PIL import Image
 
     single_mask = _merge_masks(res['masks'])
+
+    from pickle import dump
+    dump(single_mask, open('temp/single_mask.pkl', 'wb'))
+
     img = Image.fromarray(single_mask)
     img.save('/Users/michael/Downloads/single_mask2.jpg', 'JPEG')
 
-
-# single_mask = reduce(lambda x, y: x | y, [result['masks'][:, :, i] for i in indexes])
-
-# print(single_mask)
-
-
-# from json import load
-# pklot_config_file = '/Users/michael/work/lvivds/smart-parking-lvds2019/notebooks/pklot_config.json'
-# pklot_config = load(open(pklot_config_file))
-# d = pklot_config[0]['annotations'][0]
-# tupVerts = list(zip([float(px) for px in d['xn'].split(';')], [float(py) for py in d['yn'].split(';')]))
-#
-# x, y = np.meshgrid(np.arange(single_mask.shape[0]), np.arange(single_mask.shape[1])) # make a canvas with coordinates
-# x, y = x.flatten(), y.flatten()
-# points = np.vstack((x, y)).T
-#
-# p = Path(tupVerts)
-# grid = p.contains_points(points)
-# mask = grid.reshape(single_mask.shape[0], single_mask.shape[1]) # now you have a mask with poi
-#
-# print(mask)
-# display_instances(image, results[0]['rois'], results[0]['masks'], results[0]['class_ids'], CLASS_NAMES)
-# print([class_names[i] for i in results[0]['class_ids']])
-# img.save('/Users/michael/Downloads/processed2.jpg', 'JPEG')

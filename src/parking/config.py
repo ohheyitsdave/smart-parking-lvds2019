@@ -22,3 +22,7 @@ CLASS_NAMES = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
 ACCEPTED_CLASSES_INDEXES = [3, 6, 8, 9, 29, 68]
 
 COCO_MODEL_PATH = join(current_directory, "../../weights/mask_rcnn_coco.h5")
+
+IMAGE_SHAPE = (3840, 2160)
+
+PATH_TO_DATASET = join(current_directory, "../../dataset")
