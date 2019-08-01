@@ -5,3 +5,10 @@ jupyter
 pillow
 matplotlib
 opencv-python
+keras
+scikit-image
+scipy
+Cython
+pycocotools
+tqdm
+imgaug

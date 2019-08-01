@@ -1,116 +1,68 @@
-import os
-import random
-import pickle
+# -*- coding: utf-8 -*-
+from functools import reduce
 
-from itertools import islice
-
-import cv2
+import parking.coco as coco
 import numpy as np
+import skimage.io
 
-from parking.config import PATH_TO_COCO_WEIGHTS, PATH_TO_MODEL_STRUCTURE, COLORS, CLASSES
-
-CONFIDENCE = 0
-MASK_THRESHOLD = 0.3
-
-net = cv2.dnn.readNetFromTensorflow(PATH_TO_COCO_WEIGHTS, PATH_TO_MODEL_STRUCTURE)
+import parking.mrcnn.model as modellib
+from matplotlib.path import Path
+from parking.mrcnn.visualize import display_instances
+from parking.config import COCO_MODEL_PATH, CLASS_NAMES, ACCEPTED_CLASSES_INDEXES
 
 
-def get_images():
-    root_path = '/Users/michael/Downloads/smart_parking_unique/images/'
-    for root, dirs, files in os.walk(root_path):
-        for filename in files:
-            yield os.path.join(root, filename)
+class InferenceConfig(coco.CocoConfig):
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 1
+    DETECTION_MAX_INSTANCES = 500
+    DETECTION_MIN_CONFIDENCE = 0.5
 
-    # yield '/Users/michael/Downloads/test_croped6.jpg'
-    # yield '/Users/michael/Downloads/test_croped7.jpg'
-    #yield '/Users/michael/Desktop/test_croped.jpg'
 
-suffix = 'regular'
+config = InferenceConfig()
+config.display()
 
-for img_number, path_to_image in enumerate(islice(get_images(), 4, 5)):
+image_path = '/Users/michael/work/lvivds/parkingslot/images/2018-07-16 07:45:39.024.jpg'
+image = skimage.io.imread(image_path)
 
-    image = cv2.imread(path_to_image)
-    (H, W) = image.shape[:2]
+model = modellib.MaskRCNN(mode="inference", model_dir='./', config=config)
+model.load_weights(COCO_MODEL_PATH, by_name=True)
+result = model.detect([image], verbose=False)[0]
 
-    # resized = cv2.resize(image, (W*2, H*2))
-    # image=resized
-    # (H, W) = image.shape[:2]
+# print(results)
 
-    # construct a blob from the input image and then perform a forward
-    # pass of the Mask R-CNN, giving us (1) the bounding box  coordinates
-    # of the objects in the image along with (2) the pixel-wise segmentation
-    # for each specific object
-    blob = cv2.dnn.blobFromImage(image, swapRB=False, crop=False)
-    net.setInput(blob)
-    (boxes, masks) = net.forward(["detection_out_final", "detection_masks"])
-    pickle.dump({'boxes': boxes, 'masks': masks}, open('/Users/michael/Downloads/masks.data', 'wb'))
-    # clone our original image so we can draw on it
-    clone = image.copy()
-    print(path_to_image)
-    print(boxes.shape[2])
-    for i in range(0, boxes.shape[2]):
-        #  extract the class ID of the detection along with the confidence
-        #  (i.e., probability) associated with the prediction
-        classID = int(boxes[0, 0, i, 1])
-        if classID != 2:
-            continue
+# from PIL import Image, ImageDraw
+# img = Image.open(image_path)
+# draw = ImageDraw.Draw(img)
+# for i, class_id in enumerate(results[0]['class_ids']):
+#     # if class_id !=3:
+#     #     continue
+#     box_coord = results[0]['rois'][i]
+#     draw.rectangle([box_coord[1], box_coord[0], box_coord[3], box_coord[2]], outline='red', width=3)
+#     draw.text([box_coord[1], box_coord[0]], class_names[class_id])
 
-        confidence = boxes[0, 0, i, 2]
+accepted_class = np.array([3, 6, 8, 9, 29, 68])
+indexes = [i for i, class_id in enumerate(result['class_ids']) if class_id in accepted_class]
 
-        # filter out weak predictions by ensuring the detected probability
-        # is greater than the minimum probability
-        if confidence > CONFIDENCE:
-            # scale the bounding box coordinates back relative to the
-            # size of the image and then compute the width and the height
-            # of the bounding box
-            box = boxes[0, 0, i, 3:7] * np.array([W, H, W, H])
-            (startX, startY, endX, endY) = box.astype("int")
-            boxW = endX - startX
-            boxH = endY - startY
+single_mask = reduce(lambda x, y: x | y, [result['masks'][:, :, i] for i in indexes])
 
-            # extract the pixel-wise segmentation for the object, resize
-            # the mask such that it's the same dimensions of the bounding
-            # box, and then finally threshold to create a *binary* mask
-            mask = masks[i, classID]
-            mask = cv2.resize(mask, (boxW, boxH),
-                              interpolation=cv2.INTER_LINEAR)
-            mask = (mask > MASK_THRESHOLD)
+print(single_mask)
 
-            # extract the ROI of the image
-            roi = clone[startY:endY, startX:endX]
 
-            # convert the mask from a boolean to an integer mask with
-            # to values: 0 or 255, then apply the mask
-            visMask = (mask * 255).astype("uint8")
-            instance = cv2.bitwise_and(roi, roi, mask=visMask)
+from json import load
+pklot_config_file = '/Users/michael/work/lvivds/smart-parking-lvds2019/notebooks/pklot_config.json'
+pklot_config = load(open(pklot_config_file))
+d = pklot_config[0]['annotations'][0]
+tupVerts = list(zip([float(px) for px in d['xn'].split(';')], [float(py) for py in d['yn'].split(';')]))
 
-            # show the extracted ROI, the mask, along with the
-            # segmented instance
-            # cv2.imshow("ROI", roi)
-            # cv2.imshow("Mask", visMask)
-            # cv2.imshow("Segmented", instance)
+x, y = np.meshgrid(np.arange(single_mask.shape[0]), np.arange(single_mask.shape[1])) # make a canvas with coordinates
+x, y = x.flatten(), y.flatten()
+points = np.vstack((x, y)).T
 
-            # now, extract *only* the masked region of the ROI by passing
-            # in the boolean mask array as our slice condition
-            roi = roi[mask]
+p = Path(tupVerts)
+grid = p.contains_points(points)
+mask = grid.reshape(single_mask.shape[0], single_mask.shape[1]) # now you have a mask with poi
 
-            # randomly select a color that will be used to visualize this
-            # particular instance segmentation then create a transparent
-            # overlay by blending the randomly selected color with the ROI
-            color = random.choice(COLORS)
-            blended = ((0.4 * color) + (0.6 * roi)).astype("uint8")
-
-            # store the blended ROI in the original image
-            clone[startY:endY, startX:endX][mask] = blended
-
-            # draw the bounding box of the instance on the image
-            color = [int(c) for c in color]
-            cv2.rectangle(clone, (startX, startY), (endX, endY), color, 2)
-
-            # draw the predicted label and associated probability of the
-            # instance segmentation on the image
-            text = "{}: {:.4f}".format(CLASSES[classID], confidence)
-            cv2.putText(clone, text, (startX, startY - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-    cv2.imwrite(f'/Users/michael/Downloads/segmented{img_number}_{suffix}_{str(boxes.shape[2])}.jpg', clone)
+print(mask)
+# display_instances(image, results[0]['rois'], results[0]['masks'], results[0]['class_ids'], CLASS_NAMES)
+# print([class_names[i] for i in results[0]['class_ids']])
+# img.save('/Users/michael/Downloads/processed2.jpg', 'JPEG')
