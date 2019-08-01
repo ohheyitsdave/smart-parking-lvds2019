@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     from pickle import load
     single_mask = load(open('temp/single_mask.pkl', 'rb'))
-    for data in islice(get_masks_for_parking_lots(pklot_config), 10):
+    for data in get_masks_for_parking_lots(pklot_config):
         print(data['id'], calc_occupancy_level(data['mask'], single_mask))
         #img = Image.fromarray(data['mask'])
         #img.show()
