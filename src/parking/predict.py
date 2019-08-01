@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from functools import reduce
 
-import parking.coco as coco
+import src.parking.coco as coco
 import skimage.io
 
 import parking.mrcnn.model as modellib
