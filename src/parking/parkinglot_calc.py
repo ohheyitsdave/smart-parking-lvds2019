@@ -2,10 +2,12 @@ from os.path import join
 from json import load
 
 import numpy as np
+import skimage
 
 from PIL import Image, ImageDraw
 
 from parking.config import IMAGE_SHAPE, PATH_TO_DATASET
+from parking.predict import filter_out_classes, predict_image_masks, merge_masks
 
 
 def read_config():
@@ -28,12 +30,11 @@ def calc_occupancy_level(slot_mask, cars_mask):
 
 
 if __name__ == '__main__':
-    from itertools import islice
-
     from PIL import Image, ImageDraw
+    image_path = '/Users/michael/work/lvivds/parkingslot/images/2018-07-16 07:45:39.024.jpg'
 
-    img = Image.open('/Users/michael/work/lvivds/parkingslot/images/2018-07-16 07:45:39.024.jpg')
-    img.convert("RGBA")
+    img = Image.open(image_path)
+
     pklot_config = read_config()
 
     from colour import Color
@@ -41,9 +42,11 @@ if __name__ == '__main__':
     green = Color("green")
     gradient_colors = list(green.range_to(Color("red"), 100))
 
-    from pickle import load
-    single_mask = load(open('temp/single_mask.pkl', 'rb'))
+    res = filter_out_classes(predict_image_masks([skimage.io.imread(image_path)]))[0]
+    single_mask = merge_masks(res['masks'])
+
     for data in get_masks_for_parking_lots(pklot_config):
+        # Image.fromarray(data['mask']).save('/Users/michael/Desktop/presentation/slots_masks' + str(data['id'])+'.jpg', 'JPEG')
         confidence = calc_occupancy_level(data['mask'], single_mask)
         print(data['id'], confidence)
         color = tuple([int(c * 256) for c in gradient_colors[int(confidence * 100)].get_rgb()] + [125, ])
@@ -51,4 +54,4 @@ if __name__ == '__main__':
         #img = Image.fromarray(data['mask'])
 
     #img.show()
-    img.save('temp/places.jpg', 'JPEG')
+    img.save('/Users/michael/Desktop/presentation/predicted.jpg', 'JPEG')

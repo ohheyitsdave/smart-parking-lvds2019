@@ -9,6 +9,8 @@ from parking.mrcnn.visualize import display_instances
 from parking.config import COCO_MODEL_PATH, CLASS_NAMES, ACCEPTED_CLASSES_INDEXES
 
 
+MODEL_CACHE = None
+
 class InferenceConfig(coco.CocoConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
@@ -20,6 +22,7 @@ class InferenceConfig(coco.CocoConfig):
 
 
 config = InferenceConfig()
+#config.BATCH_SIZE = 3
 config.display()
 
 
@@ -53,9 +56,14 @@ def predict_image_masks(images):
     :return: list of mappings with rois masks and predicted class indexes for each image
     :rtype: list[dict]
     """
+    global MODEL_CACHE
+    if MODEL_CACHE:
+        model = MODEL_CACHE
+    else:
+        model = modellib.MaskRCNN(mode="inference", model_dir='./', config=config)
+        model.load_weights(COCO_MODEL_PATH, by_name=True)
+        MODEL_CACHE = model
 
-    model = modellib.MaskRCNN(mode="inference", model_dir='./', config=config)
-    model.load_weights(COCO_MODEL_PATH, by_name=True)
     return model.detect(images, verbose=False)
 
 
@@ -71,8 +79,8 @@ if __name__ == '__main__':
 
     single_mask = merge_masks(res['masks'])
 
-    from pickle import dump
-    dump(single_mask, open('temp/single_mask.pkl', 'wb'))
+    # from pickle import dump
+    # dump(single_mask, open('temp/single_mask.pkl', 'wb'))
 
     img = Image.fromarray(single_mask)
     img.save('/Users/michael/Downloads/single_mask2.jpg', 'JPEG')
